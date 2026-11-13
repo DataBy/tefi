@@ -81,21 +81,25 @@ function FlowerArt({ id = 'main', blooming = true, small = false }) {
     <g className="flower-head" style={{ transformOrigin:'300px 291px' }}>
       <ellipse cx="300" cy="297" rx="191" ry="191" fill="#E696B8" opacity=".14" filter={gradient('soft')} />
       <g filter={gradient('shadow')}>
-        {Array.from({length:11}, (_, i) =>
-          <motion.ellipse key={'outer'+i} cx="300" cy="173" rx="67" ry="141"
-            fill={gradient('outer')} stroke="#FFE2E9" strokeWidth="3" transform={rotate(i,11)}
-            initial={reduced ? false : {opacity:0,scale:.54}}
-            animate={{opacity:1,scale:blooming ? 1 : .68}}
-            transition={{type:'spring',stiffness:88,damping:15,delay:i*.043}}/>
-        )}
-        {Array.from({length:9}, (_, i) =>
-          <motion.ellipse key={'inner'+i} cx="300" cy="221" rx="47" ry="103"
-            fill={gradient('inner')} fillOpacity=".88" stroke="#FFE9EF" strokeOpacity=".85" strokeWidth="2"
-            transform={rotate(i+0.22,9)}
-            initial={reduced ? false : {opacity:0,scale:.65}}
-            animate={{opacity:1,scale:blooming ? 1 : .8}}
-            transition={{type:'spring',stiffness:92,damping:17,delay:.28+i*.035}}/>
-        )}
+        <motion.g style={{transformOrigin:'300px 291px'}}
+          initial={reduced ? false : {opacity:0,scale:.6,rotate:-8}}
+          animate={{opacity:1,scale:blooming ? 1 : .83,rotate:0}}
+          transition={{type:'spring',stiffness:90,damping:15,duration:1.15}}>
+          {Array.from({length:11}, (_, i) =>
+            <ellipse key={'outer'+i} cx="300" cy="173" rx="67" ry="141"
+              fill={gradient('outer')} stroke="#FFE2E9" strokeWidth="3" transform={rotate(i,11)}/>
+          )}
+        </motion.g>
+        <motion.g style={{transformOrigin:'300px 291px'}}
+          initial={reduced ? false : {opacity:0,scale:.54,rotate:10}}
+          animate={{opacity:1,scale:blooming ? 1 : .87,rotate:0}}
+          transition={{type:'spring',stiffness:105,damping:15,delay:.22}}>
+          {Array.from({length:9}, (_, i) =>
+            <ellipse key={'inner'+i} cx="300" cy="221" rx="47" ry="103"
+              fill={gradient('inner')} fillOpacity=".88" stroke="#FFE9EF" strokeOpacity=".85" strokeWidth="2"
+              transform={rotate(i+0.22,9)}/>
+          )}
+        </motion.g>
       </g>
       <g filter={gradient('faceShadow')}>
         <circle cx="300" cy="291" r="103" fill="#FCE7AA" stroke="#FFEBC7" strokeWidth="9"/>
