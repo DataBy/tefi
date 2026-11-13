@@ -1,453 +1,346 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
-import { motion, AnimatePresence, useReducedMotion, useScroll } from 'motion/react'
-import { Heart, HeartPulse, Stethoscope, Flower2, Volume2, VolumeX, ArrowDown, ArrowUp, Sparkles, X, MailOpen, ChevronDown } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion, useScroll, useSpring, useTransform } from 'motion/react'
+import { Activity, ArrowDown, ArrowRight, Check, Cross, Flower2, Heart, HeartPulse, Pause, Plus, RotateCcw, Sparkles, Stethoscope, Volume2, VolumeX } from 'lucide-react'
 import './styles.css'
 
-const FLOWERS = [
-  {
-    id: 'vocacion',
-    label: 'Tu vocación',
-    kicker: '01 · UNA COSA QUE ADMIRO',
-    title: 'La forma en que cuidas.',
-    message: 'Me parece muy bonito que hayas elegido una profesión donde tu tiempo, tus manos y tu corazón pueden hacer la diferencia en la vida de alguien. Eso dice mucho de ti.',
-    petal: '#f3aebc',
-    petalLight: '#ffe0e5',
-    center: '#f7d98a',
-    turns: 9,
-    tilt: -8,
-  },
-  {
-    id: 'ternura',
-    label: 'Tu esencia',
-    kicker: '02 · OTRA COSITA',
-    title: 'Esos detalles tan tuyos.',
-    message: 'Hay personas que tienen una manera especial de hacer sentir bien a quienes están cerca. Me gusta ir descubriendo esas pequeñas cosas que te hacen ser tú.',
-    petal: '#c9b8e9',
-    petalLight: '#efe7ff',
-    center: '#f9d38c',
-    turns: 8,
-    tilt: 5,
-  },
-  {
-    id: 'flores',
-    label: 'Tus flores',
-    kicker: '03 · Y UNA MÁS',
-    title: 'Tu manera de florecer.',
-    message: 'Me encanta que entre los días intensos, los hospitales y tantas responsabilidades, guardes también un espacio para las flores y las cosas bonitas. Quise hacerte una de esas cosas bonitas.',
-    petal: '#f5c982',
-    petalLight: '#ffedc3',
-    center: '#9e6b4b',
-    turns: 11,
-    tilt: 10,
-  },
+const TRAITS = [
+  { id: 'vocacion', number: '01', name: 'Vocación', icon: Stethoscope, heading: 'Una decisión con propósito.', text: 'Elegir cuidar a otras personas no es cualquier cosa. Detrás de cada bata hay compromiso, estudio y muchísima entrega.' },
+  { id: 'empatia', number: '02', name: 'Empatía', icon: Heart, heading: 'La parte más humana.', text: 'A veces, un gesto amable puede hacer que un día complicado se sienta un poquito menos difícil.' },
+  { id: 'dedicacion', number: '03', name: 'Dedicación', icon: Sparkles, heading: 'Todo lo que no siempre se ve.', text: 'Horas aprendiendo, días intensos y ganas de hacerlo bien. Hay mucho esfuerzo detrás de lo que haces.' },
 ]
-
-const SMALL_PETALS = Array.from({ length: 19 }, (_, i) => ({
+const SPECKS = Array.from({ length: 28 }, (_, i) => ({
   id: i,
-  x: Math.sin(i * 2.13) * (105 + (i % 4) * 38),
-  y: -70 - (i % 5) * 46,
-  rotate: (i % 2 ? 1 : -1) * (70 + i * 21),
-  delay: (i % 7) * 0.048,
-  color: ['#f4b8c5', '#fbd9b5', '#e8d2f5', '#fff0ee'][i % 4],
+  left: 6 + ((i * 37.1) % 88),
+  top: 7 + ((i * 19.7) % 85),
+  delay: -(i % 9) * .8,
+  duration: 4 + i % 5,
+  size: i % 4 === 0 ? 6 : 3,
 }))
 
-function SoundFX() {
-  const contextRef = useRef(null)
-  const play = (freq = 740, volume = 0.035) => {
-    try {
-      const Audio = window.AudioContext || window.webkitAudioContext
-      if (!Audio) return
-      if (!contextRef.current) contextRef.current = new Audio()
-      const ctx = contextRef.current
-      if (ctx.state === 'suspended') ctx.resume()
-      ;[1, 1.5, 2].forEach((ratio, i) => {
-        const oscillator = ctx.createOscillator()
-        const gain = ctx.createGain()
-        oscillator.type = 'sine'
-        oscillator.frequency.setValueAtTime(freq * ratio, ctx.currentTime)
-        oscillator.frequency.exponentialRampToValueAtTime(freq * ratio * 0.93, ctx.currentTime + 0.55)
-        gain.gain.setValueAtTime(0.0001, ctx.currentTime)
-        gain.gain.exponentialRampToValueAtTime(volume / (i + 1), ctx.currentTime + 0.025 + i * 0.02)
-        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.65 + i * 0.13)
-        oscillator.connect(gain)
-        gain.connect(ctx.destination)
-        oscillator.start()
-        oscillator.stop(ctx.currentTime + 0.92)
-      })
-    } catch {
-      // La carta funciona también en navegadores que bloquean audio.
-    }
-  }
-  useEffect(() => () => {
-    if (contextRef.current) contextRef.current.close().catch(() => {})
-  }, [])
-  return play
+function Ping({ enabled, pitch = 660 }) {
+  if (!enabled) return
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext
+    if (!AudioCtx) return
+    const ctx = new AudioCtx()
+    if (ctx.state === 'suspended') ctx.resume()
+    ;[0, .095, .18].forEach((offset, index) => {
+      const o = ctx.createOscillator()
+      const g = ctx.createGain()
+      o.type = 'sine'
+      o.frequency.setValueAtTime(pitch * (1 + index * .25), ctx.currentTime + offset)
+      g.gain.setValueAtTime(.0001, ctx.currentTime + offset)
+      g.gain.exponentialRampToValueAtTime(.027 / (index + 1), ctx.currentTime + offset + .025)
+      g.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + offset + .43)
+      o.connect(g)
+      g.connect(ctx.destination)
+      o.start(ctx.currentTime + offset)
+      o.stop(ctx.currentTime + offset + .48)
+    })
+    window.setTimeout(() => ctx.close().catch(() => {}), 900)
+  } catch { /* Audio is optional. */ }
 }
 
-function TinyCross({ className = '' }) {
-  return <span className={'tiny-cross ' + className} aria-hidden="true"><span /></span>
-}
-
-function FloatingBlossom({ className = '', color = '#f6c8d4', size = 100, spin = 0 }) {
-  return (
-    <svg className={'floating-blossom ' + className} width={size} height={size} viewBox="0 0 100 100" fill="none" aria-hidden="true" style={{ '--spin': spin + 'deg' }}>
-      <g transform="translate(50 50)">
-        {Array.from({ length: 7 }, (_, i) => <ellipse key={i} cy="-24" rx="13" ry="25" fill={color} transform={'rotate(' + i * (360 / 7) + ')'} />)}
-        <circle r="13.5" fill="#fff0b8" />
-        <circle r="6" fill="#dfb56c" opacity=".42" />
-        {Array.from({ length: 6 }, (_, i) => <circle key={i} cx={Math.cos(i * Math.PI / 3) * 8} cy={Math.sin(i * Math.PI / 3) * 8} r="1.8" fill="#c5955a" />)}
-      </g>
-    </svg>
-  )
-}
-
-function AmbientDecor() {
-  return (
-    <div className="ambient-decor" aria-hidden="true">
-      <div className="ambient-glow glow-a" />
-      <div className="ambient-glow glow-b" />
-      <FloatingBlossom className="float-a" color="#f8d9e1" size={118} spin={-12} />
-      <FloatingBlossom className="float-b" color="#ece3f7" size={81} spin={24} />
-      <FloatingBlossom className="float-c" color="#fde3c4" size={63} spin={10} />
-      <FloatingBlossom className="float-d" color="#f4c8d5" size={104} spin={-8} />
-      <i className="drift-petal drift-a" /><i className="drift-petal drift-b" /><i className="drift-petal drift-c" />
-      <i className="drift-petal drift-d" /><i className="drift-petal drift-e" />
-    </div>
-  )
-}
-
-function FadeIn({ children, className = '', delay = 0, amount = 0.18 }) {
+function FlowerArt({ id = 'main', blooming = true, small = false }) {
   const reduced = useReducedMotion()
-  return (
-    <motion.div className={className}
-      initial={reduced ? false : { opacity: 0, y: 36, filter: 'blur(7px)' }}
-      whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-      viewport={{ once: true, amount }}
-      transition={{ duration: reduced ? 0 : 0.9, delay, ease: [0.22, 1, 0.36, 1] }}>
-      {children}
-    </motion.div>
-  )
-}
-
-function PetalBurst({ nonce, mode = 'petal' }) {
-  if (!nonce) return null
-  return (
-    <div className="burst-container" aria-hidden="true">
-      <AnimatePresence>
-        {SMALL_PETALS.map((petal) => (
-          <motion.span key={nonce + '-' + petal.id}
-            className={mode === 'heart' ? 'burst-heart' : 'burst-petal'}
-            style={{ backgroundColor: petal.color }}
-            initial={{ x: 0, y: 0, opacity: 0, scale: 0.25, rotate: 0 }}
-            animate={{ x: petal.x, y: petal.y, opacity: [0, 1, 1, 0], scale: [0.3, 1, 0.8], rotate: petal.rotate }}
-            transition={{ duration: 1.65, delay: petal.delay, ease: [0.18, 0.65, 0.23, 1] }} />
-        ))}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-function Envelope({ opened, onOpen, burst }) {
-  return (
-    <div className="envelope-wrapper">
-      <motion.button
-        type="button"
-        className={'envelope-button ' + (opened ? 'is-open' : '')}
-        onClick={onOpen}
-        disabled={opened}
-        aria-label={opened ? 'Carta abierta' : 'Abrir la carta para Tefi'}
-        initial={{ opacity: 0, y: 60, rotate: -5 }}
-        animate={{ opacity: 1, y: 0, rotate: 0 }}
-        transition={{ type: 'spring', stiffness: 82, damping: 16, delay: 0.35 }}
-        whileHover={opened ? {} : { y: -6, rotate: -1 }}
-        whileTap={opened ? {} : { scale: 0.97 }}>
-        <div className="envelope-shadow" />
-        <div className="envelope-shell">
-          <div className="envelope-back" />
-          <div className="letter-peek">
-            <span className="peek-eyebrow">PARA UNA PERSONA ESPECIAL</span>
-            <Heart size={19} fill="#edb5c2" strokeWidth={0} />
-            <span className="peek-title">Para Tefi</span>
-            <span className="peek-bottom">con cariño ♡</span>
-          </div>
-          <svg className="envelope-folds" viewBox="0 0 340 193" preserveAspectRatio="none" aria-hidden="true">
-            <path d="M0 0 L170 117 L340 0 V193 H0 Z" fill="#f9dce2"/>
-            <path d="M0 193 L148 84 Q170 68 192 84 L340 193 Z" fill="#f5c8d3"/>
-            <path d="M0 0 L170 116 L0 193 Z" fill="#fbe8eb"/>
-            <path d="M340 0 L170 116 L340 193 Z" fill="#f8d7df"/>
-          </svg>
-          <div className="envelope-flap" />
-          <div className="wax-seal"><Heart size={16} strokeWidth={2.2} fill="#fff5f4" /><TinyCross className="seal-cross" /></div>
-        </div>
-        <PetalBurst nonce={burst} />
-      </motion.button>
-      <motion.div className="envelope-caption" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.1 }}>
-        {opened ? <span>Tu carta está lista para florecer <span aria-hidden="true">♡</span></span> : <span>Toca el sobre para abrir tu carta</span>}
-        {!opened && <motion.div animate={{ y: [0, 5, 0] }} transition={{ repeat: Infinity, duration: 1.8 }}><ChevronDown size={18}/></motion.div>}
-      </motion.div>
-    </div>
-  )
-}
-
-function FlowerIllustration({ flower, selected = false }) {
-  return (
-    <svg className="illustrated-flower" viewBox="0 0 220 295" fill="none" role="img" aria-label={'Flor ' + flower.label}>
-      <defs>
-        <linearGradient id={'stem-' + flower.id} x1="0" y1="0" x2="1" y2="1"><stop stopColor="#9ec4a4"/><stop offset="1" stopColor="#648f77"/></linearGradient>
-        <linearGradient id={'petal-' + flower.id} x1="0" y1="0" x2="1" y2="1"><stop stopColor={flower.petalLight}/><stop offset="1" stopColor={flower.petal}/></linearGradient>
-      </defs>
-      <motion.path d="M111 116 C108 158 121 198 107 278" stroke={'url(#stem-' + flower.id + ')'} strokeWidth="6.5" strokeLinecap="round"
-        initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.3, delay: .12 }}/>
-      <path d="M115 196 C144 159 173 165 164 192 C148 215 126 207 115 196 Z" fill="#a6cbaa"/>
-      <path d="M113 231 C88 198 63 201 66 227 C75 247 100 243 113 231 Z" fill="#b3d7b3"/>
-      <path d="M115 196 Q138 191 159 188 M113 231 Q86 228 71 225" stroke="#73a588" strokeWidth="1.3" opacity=".6"/>
-      <motion.g className="flower-blossom" style={{ transformOrigin: '110px 111px' }}
-        initial={{ scale: .15, rotate: flower.tilt - 30 }}
-        whileInView={{ scale: 1, rotate: flower.tilt }}
-        animate={selected ? { scale: [1, 1.12, 1] } : undefined}
-        viewport={{ once: true }}
-        transition={{ type: 'spring', stiffness: 95, damping: 12, delay: .3 }}>
-        <g transform="translate(110 110)">
-          {Array.from({ length: flower.turns }, (_, i) => (
-            <ellipse key={i} cy="-39" rx={flower.turns > 9 ? '16.5' : '19'} ry="38" fill={'url(#petal-' + flower.id + ')'}
-              stroke="#ffffff" strokeOpacity=".55" strokeWidth="1.2" transform={'rotate(' + (i * (360 / flower.turns)) + ')'} />
-          ))}
-          <circle r="27" fill={flower.center} stroke="#fff4d8" strokeWidth="2"/>
-          <circle r="19" fill="#e5b46f" opacity=".24"/>
-          {Array.from({ length: 15 }, (_, i) => (
-            <circle key={i} cx={Math.cos(i * 2.399) * (5 + i * 1.15)}
-              cy={Math.sin(i * 2.399) * (5 + i * 1.15)} r={i % 3 === 0 ? 2.6 : 1.8} fill="#8b623d" opacity=".55"/>
-          ))}
-          <circle cx="-9" cy="-9" r="7" fill="#fff9e6" opacity=".3"/>
-        </g>
-      </motion.g>
-      <circle cx="179" cy="66" r="2.8" fill="#e8a8b7"/>
-      <path d="M37 104 v12 M31 110 h12" stroke="#d0abd1" strokeWidth="2" strokeLinecap="round" opacity=".85"/>
-      <circle cx="163" cy="127" r="3" fill="#edce87" />
-    </svg>
-  )
-}
-
-function FlowerNote({ flower, onClose, reduced }) {
-  useEffect(() => {
-    function onKey(e) { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    const old = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = old }
-  }, [onClose])
-  return (
-    <motion.div className="note-backdrop" onClick={onClose}
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      transition={{ duration: reduced ? 0 : .3 }}>
-      <motion.div className="note-dialog" role="dialog" aria-modal="true" aria-labelledby="flower-note-title"
-        onClick={(event) => event.stopPropagation()}
-        initial={reduced ? false : { opacity: 0, y: 80, scale: .93, rotate: -2 }}
-        animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
-        exit={{ opacity: 0, y: 45, scale: .95 }}
-        transition={{ type: 'spring', stiffness: 240, damping: 24 }}>
-        <button className="note-close" onClick={onClose} aria-label="Cerrar mensaje"><X size={19} /></button>
-        <div className="note-decoration"><FloatingBlossom color={flower.petal} size={102}/></div>
-        <span className="eyebrow">{flower.kicker}</span>
-        <h3 id="flower-note-title">{flower.title}</h3>
-        <p>{flower.message}</p>
-        <div className="note-signature">un detallito para ti <Heart size={16} fill="#dc9caa" strokeWidth={0}/></div>
-      </motion.div>
-    </motion.div>
-  )
-}
-
-function FloralLine() {
-  return (
-    <svg className="floral-line" viewBox="0 0 320 86" fill="none" aria-hidden="true">
-      <motion.path d="M15 66 Q64 15 110 53 T212 43 T307 23"
-        stroke="#b8c9a9" strokeWidth="2" strokeLinecap="round"
-        initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.6 }} />
-      {[{ x: 83, y: 43 },{ x: 183, y: 50 },{ x: 270, y: 29 }].map((p,i) => (
-        <g key={i} transform={'translate(' + p.x + ' ' + p.y + ')'}>
-          {Array.from({ length: 5 }, (_, j) => <ellipse key={j} cy="-8" ry="9" rx="5.5" fill={['#f4c8d4','#e1d6ee','#f9ddb1'][i]} transform={'rotate(' + j * 72 + ')'}/>)}
-          <circle r="4.2" fill="#e7bc72" />
-        </g>
-      ))}
-      <path d="M134 48 Q135 29 151 32 Q152 45 134 48Z M237 36 Q231 19 220 20 Q219 34 237 36Z" fill="#a8c9ad"/>
-    </svg>
-  )
-}
-
-function App() {
-  const [opened, setOpened] = useState(false)
-  const [burst, setBurst] = useState(0)
-  const [activeFlower, setActiveFlower] = useState(null)
-  const [sound, setSound] = useState(false)
-  const [hug, setHug] = useState(0)
-  const [showHug, setShowHug] = useState(false)
-  const reduceMotion = useReducedMotion()
-  const playTone = SoundFX()
-  const { scrollYProgress } = useScroll()
-
-  function openLetter() {
-    if (opened) return
-    setOpened(true)
-    setBurst(value => value + 1)
-    if (sound) playTone(520, .025)
-    window.setTimeout(() => {
-      document.getElementById('letter-start')?.scrollIntoView({ behavior: reduceMotion ? 'instant' : 'smooth', block: 'start' })
-    }, reduceMotion ? 180 : 1750)
-  }
-
-  function openFlower(flower) {
-    setActiveFlower(flower)
-    if (sound) playTone(flower.id === 'flores' ? 660 : 785, .024)
-  }
-
-  function sendHug() {
-    setHug(value => value + 1)
-    setShowHug(true)
-    if (sound) playTone(580, .02)
-  }
-
-  return (
-    <div className="app">
-      {opened && <motion.div className="reading-progress" style={{ scaleX: scrollYProgress }}/>}
-      <header className="site-header">
-        <a href="#inicio" className="site-mark" aria-label="Volver al inicio">
-          <span className="mark-icon"><TinyCross/><Heart size={13} fill="currentColor" strokeWidth={0}/></span>
-          <span>para tefi<span className="mark-period">.</span></span>
-        </a>
-        <button className="sound-switch" type="button" onClick={() => {
-          setSound(value => {
-            if (!value) playTone(630, .02)
-            return !value
-          })
-        }} aria-label={sound ? 'Desactivar sonido' : 'Activar sonido'} title={sound ? 'Desactivar sonido' : 'Activar sonido'}>
-          {sound ? <Volume2 size={16} /> : <VolumeX size={16}/>}
-          <span>{sound ? 'sonido activado' : 'sonido opcional'}</span>
-        </button>
-      </header>
-
-      <section className="hero" id="inicio">
-        <AmbientDecor/>
-        <div className="hero-content">
-          <motion.div className="hero-kicker" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .1, duration: .8 }}>
-            <span className="kicker-star">✳</span> una sorpresa pequeñita <span className="kicker-star">✳</span>
-          </motion.div>
-          <motion.h1 initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: .2, duration: .9 }}>
-            Para alguien<br/>que hace <em>florecer</em><br/>el mundo.
-          </motion.h1>
-          <motion.p className="hero-subtitle" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: .6, duration: 1 }}>
-            Hay personas que hacen los días más bonitos<br className="desktop-break" /> sin siquiera darse cuenta.
-          </motion.p>
-          <Envelope opened={opened} onOpen={openLetter} burst={burst}/>
-          <div className="hero-footer"><span>HECHO CON CARIÑO</span><span className="footer-dot">✦</span><span>SOLO PARA TI</span></div>
-        </div>
-      </section>
-
-      <AnimatePresence>
-        {opened && (
-          <motion.main key="letter-main" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: .9 }}>
-            <section id="letter-start" className="story-section">
-              <div className="section-sticker sticker-top"><Stethoscope size={24} strokeWidth={1.5}/><span>con amor por lo que haces</span></div>
-              <FadeIn className="story-content">
-                <div className="section-number"><TinyCross/> CAPÍTULO UNO</div>
-                <h2>Una carta para quien<br/><em>siempre cuida</em> de otros.</h2>
-                <p>Siempre estás cuidando a los demás. Así que hice este pequeño mundo para que tú también tengas un lugar donde recibir cariño.</p>
-                <FloralLine/>
-                <span className="story-postscript">un rinconcito de calma, flores y palabras bonitas ♡</span>
-              </FadeIn>
-              <div className="section-sticker sticker-bottom"><HeartPulse size={21} strokeWidth={1.6}/> <span>receta: una sonrisa</span></div>
-            </section>
-
-            <section className="flowers-section" id="flores">
-              <FadeIn className="section-heading">
-                <span className="eyebrow">UN RAMITO SOLO PARA TI</span>
-                <h2>Si pudiera regalarte<br/><em>tres flores...</em></h2>
-                <p>Cada una guardaría algo que me gusta de ti. Tócalas con calma, son tuyas.</p>
-              </FadeIn>
-              <div className="flower-bed">
-                <div className="flower-haze" aria-hidden="true"/>
-                {FLOWERS.map((flower, i) => (
-                  <FadeIn key={flower.id} className={'flower-column flower-column-' + i} delay={i * .12} amount={.1}>
-                    <motion.button type="button" className="flower-button" onClick={() => openFlower(flower)}
-                      whileHover={reduceMotion ? {} : { y: -9, rotate: i % 2 ? 2 : -2 }}
-                      whileTap={reduceMotion ? {} : { scale: .93 }}
-                      transition={{ type: 'spring', stiffness: 190, damping: 15 }}
-                      aria-label={'Descubrir el mensaje de ' + flower.label}>
-                      <FlowerIllustration flower={flower}/>
-                      <span className="flower-label">{flower.label}<span className="flower-plus">↗</span></span>
-                    </motion.button>
-                  </FadeIn>
-                ))}
-              </div>
-              <FadeIn className="flowers-footnote"><Sparkles size={15} strokeWidth={1.6}/> Hay cosas bonitas que merecen decirse.</FadeIn>
-            </section>
-
-            <section className="care-section">
-              <div className="care-container">
-                <FadeIn className="care-illustration">
-                  <div className="care-halo halo-one"/><div className="care-halo halo-two"/>
-                  <div className="care-badge badge-top"><TinyCross/> una dosis de amor</div>
-                  <div className="heart-illustration">
-                    <motion.div animate={reduceMotion ? {} : { scale: [1, 1.055, 1] }} transition={{ duration: 2.65, repeat: Infinity, ease: 'easeInOut' }}>
-                      <Heart size={126} fill="#eda6b8" stroke="#d9899e" strokeWidth={1.1}/>
-                    </motion.div>
-                    <span className="heart-cross"><TinyCross/></span>
-                  </div>
-                  <div className="care-badge badge-bottom"><Flower2 size={15}/> para días largos</div>
-                </FadeIn>
-                <FadeIn className="care-copy" delay={.12}>
-                  <span className="eyebrow">UN RECORDATORIO SUAVECITO</span>
-                  <h2>Y si algún día<br/>el mundo <em>pesa...</em></h2>
-                  <p>Que no se te olvide algo importante: tú también mereces descansar, recibir flores y sentirte cuidada.</p>
-                  <button className="hug-button" type="button" onClick={sendHug}>
-                    <Heart size={17} fill="currentColor" strokeWidth={1.2}/> Te mando un abrazo
-                  </button>
-                  <div className="hug-feedback" aria-live="polite">{showHug ? 'Abrazo enviado, con muchísimo cariño ♡' : 'Este botón es solo para ti.'}</div>
-                  <div className="hug-effect"><PetalBurst nonce={hug} mode="heart"/></div>
-                </FadeIn>
-              </div>
-            </section>
-
-            <section className="final-section" id="carta">
-              <FadeIn className="final-heading">
-                <span className="eyebrow">Y AHORA SÍ...</span>
-                <h2>Lo que de verdad<br/><em>quería decirte.</em></h2>
-              </FadeIn>
-              <FadeIn className="paper-wrap" delay={.08}>
-                <div className="paper-shadow"/>
-                <article className="final-paper">
-                  <div className="letter-ornament"><TinyCross/><span>una nota para ti</span><Heart size={12} fill="#da9cac" strokeWidth={0}/></div>
-                  <div className="paper-date">UNA CARTITA PARA TEFI</div>
-                  <h3>Querida Tefi,</h3>
-                  <div className="letter-body">
-                    <p>Apenas voy descubriendo tu mundo, pero hay algo que ya me parece muy bonito de ti: la forma en que te importa cuidar de los demás.</p>
-                    <p>Detrás de esa bata hay días largos, esfuerzo, sueños y una persona que también merece momentos suaves, flores y razones para sonreír.</p>
-                    <p>Quise hacerte algo pequeñito, pero lleno de detalles, porque me gusta pensar que las personas que hacen bien a los demás también merecen que alguien tenga gestos bonitos con ellas.</p>
-                    <p>Ojalá esta carta te saque una sonrisa. Y si hoy fue un día cansado, espero que este pequeño rinconcito te recuerde lo especial que es lo que haces.</p>
-                  </div>
-                  <div className="letter-signoff"><span>Con cariño,</span><strong>alguien que disfruta mucho conocerte.</strong><span className="signed-heart">♡</span></div>
-                  <div className="paper-bottom-illustration"><FloralLine/></div>
-                </article>
-              </FadeIn>
-              <FadeIn className="after-letter">
-                <span>Gracias por abrir mi cartita.</span>
-                <motion.button className="reread-button" type="button" onClick={() => document.getElementById('inicio')?.scrollIntoView({ behavior: reduceMotion ? 'instant' : 'smooth' })}
-                  whileHover={{ y: -3 }} whileTap={{ scale: .96 }}>
-                  <ArrowUp size={15}/> Volver a verla
-                </motion.button>
-              </FadeIn>
-            </section>
-
-            <footer className="site-footer">
-              <span><TinyCross/> hecha a mano, en píxeles y con cariño</span>
-              <span>para tefi ♡</span>
-            </footer>
-          </motion.main>
+  const rotate = (i, n) => 'rotate(' + (i * 360 / n) + ' 300 291)'
+  const gradient = (name) => 'url(#' + name + '-' + id + ')'
+  return <svg className={'flower-art ' + (small ? 'flower-small' : '')} viewBox="0 0 600 685" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Una flor kawaii de pétalos rosados y lavanda, con carita sonriente y un pequeño símbolo médico">
+    <defs>
+      <radialGradient id={'outer-'+id} cx="0" cy="0" r="1" gradientTransform="translate(298 217) rotate(90) scale(180 135)" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#FFEDEB"/><stop offset=".54" stopColor="#FFC8D7"/><stop offset="1" stopColor="#F28BB4"/>
+      </radialGradient>
+      <linearGradient id={'inner-'+id} x1="240" y1="116" x2="357" y2="350" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#FFF2E8"/><stop offset=".52" stopColor="#F9AFCB"/><stop offset="1" stopColor="#CF9CE5"/>
+      </linearGradient>
+      <radialGradient id={'face-'+id} cx="0" cy="0" r="1" gradientTransform="translate(270 250) rotate(52) scale(133)">
+        <stop stopColor="#FFF6C8"/><stop offset=".74" stopColor="#FFD98C"/><stop offset="1" stopColor="#F5B970"/>
+      </radialGradient>
+      <linearGradient id={'stem-'+id} x1="300" y1="390" x2="340" y2="674" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#9AC7A3"/><stop offset="1" stopColor="#6CA985"/>
+      </linearGradient>
+      <filter id={'soft-'+id} x="-40%" y="-40%" width="180%" height="180%">
+        <feGaussianBlur stdDeviation="8" />
+      </filter>
+      <filter id={'shadow-'+id} x="-40%" y="-40%" width="180%" height="180%">
+        <feDropShadow dx="0" dy="11" stdDeviation="13" floodColor="#B66290" floodOpacity=".2"/>
+      </filter>
+      <filter id={'faceShadow-'+id} x="-40%" y="-40%" width="180%" height="180%">
+        <feDropShadow dx="0" dy="5" stdDeviation="5" floodColor="#B36A61" floodOpacity=".18"/>
+      </filter>
+    </defs>
+    <g className="stem-group">
+      <path d="M304 360 C 292 454 330 528 309 680" stroke={gradient('stem')} strokeWidth="16" strokeLinecap="round"/>
+      <path d="M314 519 C382 440 455 466 439 514 C414 557 355 558 314 519Z" fill="#A8D3B0"/>
+      <path d="M314 519 C351 517 389 510 431 502" stroke="#6FA887" strokeWidth="3" strokeLinecap="round"/>
+      <path d="M313 585 C252 507 182 523 202 574 C223 611 275 606 313 585Z" fill="#B9DEB6"/>
+      <path d="M313 585 Q273 565 211 558" stroke="#79B48C" strokeWidth="3" strokeLinecap="round"/>
+      <path d="M322 640 C350 620 377 631 374 643" stroke="#8CBE96" strokeWidth="5" strokeLinecap="round"/>
+    </g>
+    <g className="flower-head" style={{ transformOrigin:'300px 291px' }}>
+      <ellipse cx="300" cy="297" rx="191" ry="191" fill="#E696B8" opacity=".14" filter={gradient('soft')} />
+      <g filter={gradient('shadow')}>
+        {Array.from({length:11}, (_, i) =>
+          <motion.ellipse key={'outer'+i} cx="300" cy="173" rx="67" ry="141"
+            fill={gradient('outer')} stroke="#FFE2E9" strokeWidth="3" transform={rotate(i,11)}
+            initial={reduced ? false : {opacity:0,scale:.54}}
+            animate={{opacity:1,scale:blooming ? 1 : .68}}
+            transition={{type:'spring',stiffness:88,damping:15,delay:i*.043}}/>
         )}
-      </AnimatePresence>
-      <AnimatePresence>{activeFlower && <FlowerNote key={activeFlower.id} flower={activeFlower} onClose={() => setActiveFlower(null)} reduced={reduceMotion}/>}</AnimatePresence>
-    </div>
-  )
+        {Array.from({length:9}, (_, i) =>
+          <motion.ellipse key={'inner'+i} cx="300" cy="221" rx="47" ry="103"
+            fill={gradient('inner')} fillOpacity=".88" stroke="#FFE9EF" strokeOpacity=".85" strokeWidth="2"
+            transform={rotate(i+0.22,9)}
+            initial={reduced ? false : {opacity:0,scale:.65}}
+            animate={{opacity:1,scale:blooming ? 1 : .8}}
+            transition={{type:'spring',stiffness:92,damping:17,delay:.28+i*.035}}/>
+        )}
+      </g>
+      <g filter={gradient('faceShadow')}>
+        <circle cx="300" cy="291" r="103" fill="#FCE7AA" stroke="#FFEBC7" strokeWidth="9"/>
+        <circle cx="300" cy="291" r="94" fill={gradient('face')}/>
+        <ellipse cx="274" cy="236" rx="37" ry="23" fill="#FFF8E7" opacity=".22" transform="rotate(-23 274 236)"/>
+      </g>
+      <g className="face-features">
+        <ellipse className="eye eye-left" cx="266" cy="291" rx="7" ry="12" fill="#614852"/>
+        <ellipse className="eye eye-right" cx="334" cy="291" rx="7" ry="12" fill="#614852"/>
+        <circle cx="262" cy="286" r="2.8" fill="#FFF" opacity=".83"/>
+        <circle cx="330" cy="286" r="2.8" fill="#FFF" opacity=".83"/>
+        <ellipse cx="244" cy="320" rx="18" ry="9" fill="#F4A19E" opacity=".58"/>
+        <ellipse cx="356" cy="320" rx="18" ry="9" fill="#F4A19E" opacity=".58"/>
+        <path d="M288 313 Q300 325 312 313" stroke="#7A5158" strokeWidth="5" strokeLinecap="round"/>
+      </g>
+      <g className="doctor-pin" transform="translate(385 351) rotate(12)">
+        <rect x="-35" y="-31" width="70" height="62" rx="20" fill="#FFFFFF" stroke="#E9D9E4" strokeWidth="3"/>
+        <path d="M0-17 V17 M-17 0 H17" stroke="#E889A5" strokeWidth="9" strokeLinecap="round"/>
+        <circle cx="-21" cy="-22" r="3" fill="#F9CCD8"/>
+      </g>
+      <path d="M107 170 l5 15 15 5 -15 5 -5 15 -5 -15 -15 -5 15 -5Z" fill="#FFF7F0" opacity=".86"/>
+      <circle cx="493" cy="344" r="6" fill="#F3C77C"/>
+    </g>
+  </svg>
 }
 
-createRoot(document.getElementById('root')).render(<App />)
+function ParticleField() {
+  return <div className="particles" aria-hidden="true">
+    {SPECKS.map(p => <i key={p.id} className="particle" style={{
+      left:p.left+'%', top:p.top+'%', width:p.size, height:p.size,
+      animationDelay:p.delay+'s', animationDuration:p.duration+'s'
+    }}/>)}
+    <span className="ambient-cross cross-a">✳</span>
+    <span className="ambient-cross cross-b">✳</span>
+    <span className="ambient-cross cross-c">✳</span>
+  </div>
+}
+
+function PulseLine({ active }) {
+  return <div className="pulse-wrap" aria-hidden="true">
+    <svg viewBox="0 0 640 140" preserveAspectRatio="xMidYMid meet">
+      <path d="M0 72 H130 L154 72 L173 56 L195 92 L225 14 L254 126 L281 69 L310 72 H405 L429 72 L447 54 L469 94 L495 30 L523 113 L549 71 H640"
+        fill="none" stroke="#8FE4CA" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={active?'pulse-draw':''}/>
+      <path d="M0 72 H640" stroke="#8FE4CA" strokeOpacity=".12" strokeWidth="2"/>
+      <circle cx="307" cy="72" r="6" fill="#D8FFF2" className="pulse-light"/>
+    </svg>
+  </div>
+}
+
+function Reveal({ children, className='', delay=0 }) {
+  const reduced=useReducedMotion()
+  return <motion.div className={className} initial={reduced?false:{opacity:0,y:36,filter:'blur(7px)'}} whileInView={{opacity:1,y:0,filter:'blur(0px)'}} viewport={{once:true,amount:.2}} transition={{duration:reduced?0:.9,delay,ease:[.2,.78,.2,1]}}>{children}</motion.div>
+}
+
+function BloomBurst({keyId}) {
+  return <div className="bloom-burst" aria-hidden="true">
+    {Array.from({length:26},(_,i) => {
+      const angle = (i * 137.5) * Math.PI / 180
+      const d = 115 + (i%6)*24
+      return <motion.i key={keyId+'-'+i} className="burst-piece" style={{backgroundColor:['#F2A5C3','#D5BAF6','#F4D88C','#B0DCC2'][i%4]}}
+        initial={{opacity:0,x:0,y:0,scale:.3,rotate:0}}
+        animate={{opacity:[0,1,1,0],x:Math.cos(angle)*d,y:Math.sin(angle)*d-32,scale:[.3,1,.75],rotate:i*41}}
+        transition={{duration:1.9,delay:(i%5)*.045,ease:[.21,.65,.21,1]}}/>
+    })}
+  </div>
+}
+
+function App(){
+  const stageRef = useRef(null)
+  const [activeTrait,setActiveTrait] = useState(0)
+  const [sound,setSound] = useState(false)
+  const [blooming,setBlooming] = useState(false)
+  const [burst,setBurst] = useState(0)
+  const reduced = useReducedMotion()
+  const {scrollYProgress:rawProgress} = useScroll({target:stageRef,offset:['start start','end end']})
+  const progress = useSpring(rawProgress,{stiffness:65,damping:25,mass:.35})
+  const scale = useTransform(progress,[0,.16,.32,.47,.62,.81,1],[.85,1.05,2.9,4.7,2.75,1.26,.87])
+  const x = useTransform(progress,[0,.15,.32,.5,.67,.82,1],[0,0,65,-130,115,0,0])
+  const y = useTransform(progress,[0,.2,.38,.56,.78,1],[90,30,-25,68,-70,38])
+  const rotate = useTransform(progress,[0,.3,.55,.8,1],[-8,-2,17,4,-6])
+  const dim = useTransform(progress,[0,.27,.39,.57,.68,.8,1],[0,0,.86,.92,.6,0,0])
+  const vignette = useTransform(progress,[0,.28,.42,.6,.75,1],[0,0,.48,.72,.16,0])
+  const stageBar = useTransform(rawProgress,[0,1],['0%','100%'])
+  const play=(freq)=>Ping({enabled:sound,pitch:freq})
+  const finalRef=useRef(null)
+
+  useEffect(()=>{
+    if(!blooming) return
+    const timeout=window.setTimeout(()=>setBlooming(false),3500)
+    return ()=>clearTimeout(timeout)
+  },[blooming,burst])
+
+  function flourish(){
+    setBlooming(true)
+    setBurst(b=>b+1)
+    play(570)
+  }
+
+  return <div className="app">
+    <header className="nav">
+      <a href="#inicio" className="brand" aria-label="Bloom Care, ir al inicio">
+        <span className="brand-mark"><Plus size={14} strokeWidth={3}/><Flower2 size={14} strokeWidth={2.3}/></span>
+        <span>bloom<span className="brand-dot">.</span>care</span>
+      </a>
+      <div className="nav-actions">
+        <span className="for-tefi">made for tefi <span>✳</span></span>
+        <button className="sound-toggle" type="button" title={sound?'Silenciar sonidos':'Activar sonidos'} aria-label={sound?'Desactivar sonidos':'Activar sonidos'} onClick={()=>{if(!sound) Ping({enabled:true,pitch:640});setSound(!sound)}}>
+          {sound?<Volume2 size={18}/>:<VolumeX size={18}/>}
+        </button>
+      </div>
+    </header>
+    <div className="page-progress"><motion.span style={{width:stageBar}}/></div>
+
+    <section className="cinematic" ref={stageRef} id="inicio" aria-label="Historia de Bloom Care">
+      <div className="cinematic-sticky" aria-hidden="true">
+        <div className="soft-orb orb-one"/><div className="soft-orb orb-two"/>
+        <ParticleField/>
+        <motion.div className="flower-camera" style={reduced ? {} : {scale,x,y,rotate}}>
+          <FlowerArt id="hero"/>
+        </motion.div>
+        <motion.div className="night-overlay" style={{opacity:dim}}/>
+        <motion.div className="camera-vignette" style={{opacity:vignette}}/>
+        <span className="edge-label edge-left">BOTÁNICA · 001</span>
+        <span className="edge-label edge-right">PEQUEÑOS DETALLES IMPORTAN</span>
+      </div>
+
+      <div className="scenes">
+        <div className="scene scene-hero" id="comienzo">
+          <Reveal className="hero-copy">
+            <div className="eyebrow"><span className="eyebrow-line"/> UN DETALLITO PARA UNA DOCTORA <span className="eyebrow-line"/></div>
+            <h1>Una flor.<br/><em>Mil formas</em><br/>de cuidar.</h1>
+            <p>Una experiencia pequeñita, inspirada en algo muy grande: tu vocación.</p>
+          </Reveal>
+          <motion.a href="#observacion" className="scroll-cue" initial={{opacity:0,y:14}} animate={{opacity:1,y:0}} transition={{delay:1.2,duration:.7}}>
+            <span>DESLIZA PARA DESCUBRIR</span>
+            <span className="scroll-pill"><ArrowDown size={17}/></span>
+          </motion.a>
+          <div className="scene-index">00 <span>/</span> 04</div>
+        </div>
+
+        <div className="scene scene-observation" id="observacion">
+          <Reveal className="observation-card">
+            <div className="chapter-tag"><span className="chapter-number">01</span> OBSERVACIÓN</div>
+            <h2>Una bata.<br/>Muchas <em>historias.</em></h2>
+            <p>En un hospital pasan mil cosas al día. Entre tantas prisas, hay algo que siempre importa: cómo hacemos sentir a los demás.</p>
+            <div className="mini-doctor-badge"><Stethoscope size={19}/> la medicina también tiene un lado tierno</div>
+          </Reveal>
+        </div>
+
+        <div className="scene scene-heartbeat">
+          <Reveal className="heartbeat-copy">
+            <span className="chapter-light">02 / SIGNOS VITALES</span>
+            <div className="heart-chip"><HeartPulse size={15} strokeWidth={2.2}/> VOCACIÓN DETECTADA</div>
+            <h2>Hay cosas<br/>que se sienten<br/><em>en cada latido.</em></h2>
+            <p>El conocimiento salva. La humanidad acompaña. Y cuando los dos se encuentran, suceden cosas increíbles.</p>
+            <PulseLine active/>
+            <div className="vitals"><span>♥  vocación</span><span>✳  humanidad</span><span>✦  dedicación</span></div>
+          </Reveal>
+        </div>
+
+        <div className="scene scene-traits">
+          <Reveal className="traits-inner">
+            <span className="chapter-light">03 / UNA MIRADA MÁS CERCA</span>
+            <h2>No todo se aprende<br/><em>en los libros.</em></h2>
+            <p className="traits-intro">Hay cualidades que hacen especial a quien elige cuidar. Toca cada una.</p>
+            <div className="trait-controls" role="group" aria-label="Descubrir cualidades de la vocación médica">
+              {TRAITS.map((trait,index)=>{
+                const Icon=trait.icon
+                return <button key={trait.id} className={'trait-control '+(activeTrait===index?'trait-active':'')}
+                  type="button" aria-pressed={activeTrait===index}
+                  onClick={()=>{setActiveTrait(index);play(610+index*90)}}>
+                  <Icon size={18} strokeWidth={1.8}/><span>{trait.name}</span>
+                </button>
+              })}
+            </div>
+            <div className="trait-note">
+              <AnimatePresence mode="wait">
+                <motion.div key={activeTrait} className="trait-note-inner" initial={reduced?false:{opacity:0,y:15,filter:'blur(5px)'}} animate={{opacity:1,y:0,filter:'blur(0px)'}} exit={{opacity:0,y:-10,filter:'blur(4px)'}} transition={{duration:.35}}>
+                  <div className="trait-note-top"><span>0{activeTrait+1} / 03</span><Check size={16}/></div>
+                  <h3>{TRAITS[activeTrait].heading}</h3>
+                  <p>{TRAITS[activeTrait].text}</p>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </Reveal>
+        </div>
+
+        <div className="scene scene-reminder">
+          <Reveal className="reminder-copy">
+            <div className="chapter-tag"><span className="chapter-number">04</span> RECORDATORIO</div>
+            <h2>Y quien cuida,<br/><em>también merece</em><br/>ser cuidado.</h2>
+            <p>Una pausa, un día bonito, un ramito de flores. A veces las cosas sencillas son las que más se agradecen.</p>
+            <a href="#detalle" className="reminder-link">Hay algo más para ti <ArrowRight size={17}/></a>
+          </Reveal>
+        </div>
+      </div>
+    </section>
+
+    <section className="final-section" id="detalle">
+      <div className="final-noise" aria-hidden="true"/>
+      <div className="final-inner">
+        <Reveal className="final-label"><span className="sparkle">✳</span> NOTA DE CAMPO Nº 001 <span className="sparkle">✳</span></Reveal>
+        <Reveal className="final-title">
+          <h2>Un pequeño<br/><em>diagnóstico bonito.</em></h2>
+          <p>No es una receta médica, claro. Pero sí un recordatorio hecho especialmente para ti.</p>
+        </Reveal>
+
+        <Reveal className="flower-finale" delay={.12}>
+          <div className="final-halo halo-outer"/><div className="final-halo halo-inner"/>
+          <motion.div className={'final-flower-wrap '+(blooming?'bloom-now':'')}
+            animate={blooming && !reduced?{scale:[1,1.13,1.04,1],rotate:[0,-7,5,0]}:{scale:1,rotate:0}}
+            transition={{duration:1.25,ease:[.16,.8,.2,1]}}>
+            <FlowerArt id="end" small blooming/>
+          </motion.div>
+          <AnimatePresence>{burst>0 && <BloomBurst key={burst} keyId={burst}/>}</AnimatePresence>
+          <div className="floating-sticker sticker-stetho"><Stethoscope size={19}/> cuidando el mundo</div>
+          <div className="floating-sticker sticker-flower"><Flower2 size={18}/> también floreces</div>
+        </Reveal>
+
+        <Reveal className="diagnosis-card" delay={.05}>
+          <div className="diagnosis-header"><div><span className="cross-square"><Plus size={15} strokeWidth={3}/></span><strong>BLOOM CARE</strong></div><span>EDICIÓN TEFI</span></div>
+          <div className="diagnosis-main">
+            <span className="small-label">RESULTADO DEL DÍA</span>
+            <h3>Una persona que hace<br/>el mundo un poquito<br/><em>más amable.</em></h3>
+          </div>
+          <div className="diagnosis-lines">
+            <div><span><Check size={15}/> Una flor bonita</span><span>✓</span></div>
+            <div><span><Check size={15}/> Un descanso merecido</span><span>✓</span></div>
+            <div><span><Check size={15}/> Muchas razones para sonreír</span><span>✓</span></div>
+          </div>
+          <p>Indicaciones: no olvidar que tú también mereces cosas bonitas.</p>
+          <div className="diagnosis-footer"><span>CON APRECIO, PARA TI</span><Heart size={16} fill="#EC9CB8" stroke="none"/></div>
+        </Reveal>
+
+        <Reveal className="final-action">
+          <button className="bloom-button" onClick={flourish} type="button"><Flower2 size={19}/> {burst ? 'Hacerla florecer otra vez' : 'Haz florecer esta flor'} <Sparkles size={16}/></button>
+          <AnimatePresence mode="wait">
+            {burst>0 && <motion.p className="after-bloom" role="status" initial={{opacity:0,y:9}} animate={{opacity:1,y:0}} exit={{opacity:0}} transition={{duration:.5}}>Para que nunca te falten razones para florecer, Tefi. ✳</motion.p>}
+          </AnimatePresence>
+          <a href="#inicio" className="from-top"><RotateCcw size={14}/> Ver desde el principio</a>
+        </Reveal>
+      </div>
+    </section>
+    <footer className="footer"><span>✳ bloom.care</span><span>hecho con creatividad, flores y un poquito de medicina</span></footer>
+  </div>
+}
+
+createRoot(document.getElementById('root')).render(<App/>)
