@@ -36,7 +36,8 @@ button:focus-visible,a:focus-visible{outline:3px solid #db80aa;outline-offset:5p
 .particle:nth-child(5n){background:#c2dabd}
 .ambient-cross{position:absolute;color:#e3b4c9;font-size:30px;animation:spin-slow 30s linear infinite}
 .cross-a{left:10%;top:24%}.cross-b{right:11%;top:22%;font-size:22px;color:#cdb8e6}.cross-c{left:19%;bottom:14%;font-size:17px}
-.flower-camera{position:absolute;left:50%;top:50%;width:min(90vw,600px);height:auto;aspect-ratio:600/685;margin-left:calc(min(90vw,600px) / -2);margin-top:calc(min(90vw,600px) * -685 / 1200);z-index:2;will-change:transform;transform-origin:50% 45%;pointer-events:none;filter:drop-shadow(0 15px 22px #e7a3b033)}
+.flower-camera{position:absolute;inset:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:2;will-change:transform;transform-origin:50% 50%;pointer-events:none;filter:drop-shadow(0 15px 22px #e7a3b033)}
+.flower-camera>.flower-art{width:min(90vw,600px);height:auto;flex:0 0 auto}
 .flower-art{display:block;width:100%;overflow:visible}
 .flower-head{animation:flower-sway 7s ease-in-out infinite}
 .eye{transform-box:fill-box;transform-origin:center;animation:eye-blink 7.5s infinite}
@@ -156,7 +157,7 @@ h1 em,h2 em,h3 em{font-style:italic;font-weight:400;color:#e07fa8}
  .scene{padding-left:8%;padding-right:8%}
  .scene-hero{padding-top:115px}
  .hero-copy p{font-size:14px;max-width:390px}
- .flower-camera{width:min(59vw,700px);margin-left:calc(min(59vw,700px) / -2);margin-top:calc(min(59vw,700px) * -685 / 1200)}
+ .flower-camera>.flower-art{width:min(59vw,700px)}
  .scene-observation{padding-bottom:19vh}
  .observation-card{padding:37px;max-width:430px}
  .observation-card p,.reminder-copy p{font-size:14px}
@@ -176,7 +177,7 @@ h1 em,h2 em,h3 em{font-style:italic;font-weight:400;color:#e07fa8}
  .scene{padding-inline:18px}
  .eyebrow{font-size:8px;letter-spacing:1.4px}
  .edge-label{font-size:7px}
- .flower-camera{width:98vw;margin-left:-49vw;margin-top:-55.9vw}
+ .flower-camera>.flower-art{width:98vw}
  .trait-control{padding:10px 9px;font-size:10px}
  .trait-control svg{width:15px}
  .traits-inner h2{font-size:42px}
@@ -187,7 +188,7 @@ h1 em,h2 em,h3 em{font-style:italic;font-weight:400;color:#e07fa8}
 @media(max-height:700px) and (max-width:700px){
  .scene-hero{padding-top:90px}
  .hero-copy h1{font-size:clamp(43px,11vw,64px);margin:12px auto}
- .flower-camera{width:min(78vw,470px);margin-left:calc(min(78vw,470px) / -2);margin-top:calc(min(78vw,470px) * -685 / 1200)}
+ .flower-camera>.flower-art{width:min(78vw,470px)}
  .scroll-cue{bottom:6%}
  .scene-observation{padding-bottom:9svh}
  .scene-reminder{padding-bottom:8svh}
